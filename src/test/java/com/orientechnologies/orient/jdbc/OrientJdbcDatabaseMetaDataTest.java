@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import junit.framework.Assert;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -177,6 +179,35 @@ public class OrientJdbcDatabaseMetaDataTest extends OrientJdbcBaseTest {
       assertTrue("Returned table '" + tableName + "' is not in expected tables", expectedTableNames.remove(tableName));
     }
     assertEquals(0, expectedTableNames.size());
+  }
+  
+  @Test 
+  public void tablesCanBeSearchedWithWildcard() throws Throwable {
+    Collection<String> expectedTableNames = new ArrayList<String>();
+    expectedTableNames.add("Article");
+    expectedTableNames.add("Author");
+    
+    ResultSet columns = conn.getMetaData().getTables(null, null, "A%", null);
+    while (columns.next()) {
+      String tableName = columns.getString("TABLE_NAME");
+      assertTrue("Returned table '" + tableName + "' is not in expected tables", expectedTableNames.remove(tableName));
+    }
+  }
+  
+  @Test 
+  public void tablescanBeSearchedWithType() throws Throwable {
+    Collection<String> expectedTableNames = new ArrayList<String>();
+    expectedTableNames.add("Article");
+    expectedTableNames.add("Author");
+    expectedTableNames.add("Item");
+    expectedTableNames.add("V");
+    expectedTableNames.add("E");
+    
+    ResultSet columns = conn.getMetaData().getTables(null, null, null, new String[] { "TABLE" } );
+    while (columns.next()) {
+      String tableName = columns.getString("TABLE_NAME");
+      assertTrue("Returned table '" + tableName + "' is not in expected tables", expectedTableNames.remove(tableName));
+    }
   }
 
   private void assertFieldsInItemClassByColumnNamePattern(String columnNamePattern, String... expectedColumnNames) throws Throwable {

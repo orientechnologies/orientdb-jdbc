@@ -634,29 +634,39 @@ public class OrientJdbcDatabaseMetaData implements DatabaseMetaData {
   }
 
   public ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types) throws SQLException {
+    
+    Pattern tablePattern = createPattern(tableNamePattern);
+    
     final Collection<OClass> classes = database.getMetadata().getSchema().getClasses();
     final List<ODocument> records = new ArrayList<ODocument>();
 
+    List<String> typeList = null;
+    if (null != types) {
+        typeList = Arrays.asList(types);
+    }
+    
     for (OClass cls : classes) {
-      final ODocument doc = new ODocument();
-      doc.field("TABLE_CAT", (Object) null);
-      doc.field("TABLE_SCHEM", (Object) null);
+      if (tablePattern.matcher(cls.getName()).matches()) {
+        String type;
+        if (SYSTEM_TABLES.contains(cls.getName()))
+          type = "SYSTEM TABLE";
+        else if ("memory".equals(database.getClusterType(database.getClusterNameById(cls.getDefaultClusterId()))))
+          type = "VIEW";
+        else
+          type = "TABLE";
 
-      String type;
-      if (SYSTEM_TABLES.contains(cls.getName()))
-        type = "SYSTEM TABLE";
-      else if ("memory".equals(database.getClusterType(database.getClusterNameById(cls.getDefaultClusterId()))))
-        type = "VIEW";
-      else
-        type = "TABLE";
-
-      doc.field("TABLE_TYPE", type);
-      doc.field("TABLE_NAME", cls.getName());
-      doc.field("REMARKS", (Object) null);
-      doc.field("TYPE_NAME", (Object) null);
-      doc.field("REF_GENERATION", (Object) null);
-      records.add(doc);
-
+        if (null == typeList || typeList.contains(type)) {
+          final ODocument doc = new ODocument();
+          doc.field("TABLE_CAT", (Object) null);
+          doc.field("TABLE_SCHEM", (Object) null);
+          doc.field("TABLE_TYPE", type);
+          doc.field("TABLE_NAME", cls.getName());
+          doc.field("REMARKS", (Object) null);
+          doc.field("TYPE_NAME", (Object) null);
+          doc.field("REF_GENERATION", (Object) null);
+          records.add(doc);
+        }
+      }
     }
 
     return new OrientJdbcResultSet(new OrientJdbcStatement(connection), records, ResultSet.TYPE_FORWARD_ONLY,
