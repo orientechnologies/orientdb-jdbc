@@ -24,6 +24,8 @@ import org.junit.Test;
 
 public class OrientJdbcBlobTest extends OrientJdbcBaseTest {
 
+  private static final String TEST_WORKING_DIR = "./target/working/";
+    
   @Test
   public void shouldLoadBlob() throws SQLException, FileNotFoundException, IOException, NoSuchAlgorithmException {
     File binaryFile = getOutFile();
@@ -114,13 +116,21 @@ public class OrientJdbcBlobTest extends OrientJdbcBaseTest {
   }
 
   protected File getOutFile() {
-    File binaryFile = new File("./target/working/output_blob.pdf");
-    if (binaryFile.exists()) {
+      createWorkingDirIfRequired();
+      File outFile = new File(TEST_WORKING_DIR + "output_blob.pdf");
+      deleteFileIfItExists(outFile);
+      return outFile;
+    }
+      
+  protected void createWorkingDirIfRequired() {
+    new File(TEST_WORKING_DIR).mkdirs();
+  }
+    
+  protected void deleteFileIfItExists(File file) {
+    if (file.exists()) {
       do {
-        binaryFile.delete();
-      } while (binaryFile.exists());
-    } else
-      binaryFile.mkdirs();
-    return binaryFile;
+        file.delete();
+      } while (file.exists());
+    }
   }
 }
