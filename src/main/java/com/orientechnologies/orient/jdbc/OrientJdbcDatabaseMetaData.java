@@ -28,6 +28,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import com.orientechnologies.orient.core.OConstants;
 import com.orientechnologies.orient.core.db.record.ODatabaseRecord;
@@ -127,21 +128,46 @@ public class OrientJdbcDatabaseMetaData implements DatabaseMetaData {
 
   public ResultSet getColumns(final String catalog, final String schemaPattern, final String tableNamePattern,
       final String columnNamePattern) throws SQLException {
+    Pattern tablePattern = createPattern(tableNamePattern);
+    Pattern columnPattern = createPattern(columnNamePattern);
 
     final List<ODocument> records = new ArrayList<ODocument>();
-
-    final OClass clazz = database.getMetadata().getSchema().getClass(tableNamePattern);
-    if (clazz != null) {
-      final OProperty prop = clazz.getProperty(columnNamePattern);
-      if (prop != null) {
-        records.add((ODocument) new ODocument().field("TABLE_CAT", database.getName()).field("TABLE_NAME", clazz.getName())
-            .field("COLUMN_NAME", prop.getName()).field("DATA_TYPE", OrientJdbcResultSetMetaData.getSqlType(prop.getType()))
-            .field("COLUMN_SIZE", 1).field("NULLABLE", !prop.isNotNull()).field("IS_NULLABLE", prop.isNotNull() ? "NO" : "YES"));
+    for (OClass clazz : database.getMetadata().getSchema().getClasses()) {
+      if (tablePattern.matcher(clazz.getName()).matches()) {
+        for (OProperty property : clazz.properties()) {
+          if (columnPattern.matcher(property.getName()).matches()) {
+            records.add(createDocumentFromProperty(property, clazz));
+          }
+        }
       }
     }
 
     return new OrientJdbcResultSet(new OrientJdbcStatement(connection), records, ResultSet.TYPE_FORWARD_ONLY,
         ResultSet.CONCUR_READ_ONLY, ResultSet.HOLD_CURSORS_OVER_COMMIT);
+  }
+
+  /**
+   * Created column description document from given property
+   * 
+   * @param property
+   * @param clazz
+   * @return
+   * @see #getColumns(String, String, String, String)
+   */
+  protected ODocument createDocumentFromProperty(OProperty property, OClass clazz) {
+    return new ODocument().field("TABLE_CAT", database.getName())
+        .field("TABLE_NAME", clazz.getName()).field("COLUMN_NAME", property.getName())
+        .field("DATA_TYPE", OrientJdbcResultSetMetaData.getSqlType(property.getType()))
+        .field("COLUMN_SIZE", 1).field("NULLABLE", !property.isNotNull())
+        .field("IS_NULLABLE", property.isNotNull() ? "NO" : "YES");
+  }
+
+  protected Pattern createPattern(final String NamePattern) {
+    Pattern columnPattern = Pattern.compile(".*");
+    if (null != NamePattern) {
+      columnPattern = Pattern.compile(NamePattern.replaceAll("-", "\\-").replaceAll("_", ".").replaceAll("%", ".*"));
+    }
+    return columnPattern;
   }
 
   public Connection getConnection() throws SQLException {

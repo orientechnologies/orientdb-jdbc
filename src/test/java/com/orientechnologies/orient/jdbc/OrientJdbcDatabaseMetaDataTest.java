@@ -9,6 +9,8 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -75,7 +77,7 @@ public class OrientJdbcDatabaseMetaDataTest extends OrientJdbcBaseTest {
   }
 
   @Test
-  public void getFields() throws SQLException {
+  public void getSingleFieldByName() throws SQLException {
     ResultSet rs = conn.createStatement().executeQuery("select from OUser");
     if (rs != null) {
       ResultSetMetaData metaData = rs.getMetaData();
@@ -110,5 +112,82 @@ public class OrientJdbcDatabaseMetaDataTest extends OrientJdbcBaseTest {
       }
     }
   }
+  
+  @Test 
+  public void getFieldsWithWildcardAtBeginning() throws Throwable {
+    assertFieldsInItemClassByColumnNamePattern("%Key", "stringKey", "intKey");
+  }
 
+  @Test 
+  public void getFieldsWithWildcardAtEnd() throws Throwable {
+    assertFieldsInItemClassByColumnNamePattern("t%", "time", "text", "title", "tags");
+  }
+
+  @Test 
+  public void getFieldsWithWildcardAtCenter() throws Throwable {
+    assertFieldsInItemClassByColumnNamePattern("%th%", "author", "length");
+  }
+
+  @Test 
+  public void getFieldsWithSingleCharacterWildcardAtCenter() throws Throwable {
+    assertFieldsInItemClassByColumnNamePattern("aut_or", "author");
+  }
+
+  @Test 
+  public void getFieldsWithSingleCharacterWildcardAtEnd() throws Throwable {
+    assertFieldsInItemClassByColumnNamePattern("autho_", "author");
+  }
+
+  @Test 
+  public void getFieldsWithSingleCharacterWildcardAtBeginning() throws Throwable {
+    assertFieldsInItemClassByColumnNamePattern("_uthor", "author");
+  }
+
+  @Test 
+  public void getFieldsWithMultipleSingleCharacterWildcards() throws Throwable {
+    assertFieldsInItemClassByColumnNamePattern("t___", "time", "text", "tags");
+  }
+
+  @Test 
+  public void getFieldsWithNullRetunsAllFields() throws Throwable {
+    assertFieldsInItemClassByColumnNamePattern(null, "stringKey", "intKey", "date", "time", "text","length", "published", "title","author", "tags");
+  }
+
+  @Test
+  public void searchFieldsFromMultipleClasses() throws Throwable {
+    Collection<String> expectedTableNames = new ArrayList<String>();
+    expectedTableNames.add("Article");
+    expectedTableNames.add("Author");
+    ResultSet columns = conn.getMetaData().getColumns(null, null, null, "uuid");
+    while (columns.next()) {
+      String tableName = columns.getString("TABLE_NAME");
+      assertTrue("Returned table '" + tableName + "' is not in expected tables", expectedTableNames.remove(tableName));
+    }
+    assertEquals(0, expectedTableNames.size());
+  }
+
+  @Test
+  public void searchFieldsFromClassesByTableNameWildcard() throws Throwable {
+    Collection<String> expectedTableNames = new ArrayList<String>();
+    expectedTableNames.add("Article");
+
+    ResultSet columns = conn.getMetaData().getColumns(null, null, "A%", "title");
+    while (columns.next()) {
+      String tableName = columns.getString("TABLE_NAME");
+      assertTrue("Returned table '" + tableName + "' is not in expected tables", expectedTableNames.remove(tableName));
+    }
+    assertEquals(0, expectedTableNames.size());
+  }
+
+  private void assertFieldsInItemClassByColumnNamePattern(String columnNamePattern, String... expectedColumnNames) throws Throwable {
+    Collection<String> expectedColumns = new ArrayList<String>(Arrays.asList(expectedColumnNames));
+
+    DatabaseMetaData metadata = conn.getMetaData();
+    ResultSet columns = metadata.getColumns(null, null, "Item", columnNamePattern);
+    while (columns.next()) {
+      String columnName = columns.getString("COLUMN_NAME");
+      assertTrue("Returned column '" + columnName + "' is not in expected columns", expectedColumns.remove(columnName));
+    }
+    assertEquals(0, expectedColumns.size());
+  }
 }
