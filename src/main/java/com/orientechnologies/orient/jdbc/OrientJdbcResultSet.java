@@ -186,17 +186,12 @@ public class OrientJdbcResultSet implements ResultSet {
   }
 
   public int findColumn(String columnLabel) throws SQLException {
-    int column = 0;
-    int i = 0;
-    while (i < (fieldNames.length - 1) && column == 0) {
-      if (fieldNames[i].equals(columnLabel))
-        column = i + 1;
-      else
-        i++;
+    for (int i = 0; i < fieldNames.length; i++) {
+      if (fieldNames[i].equals(columnLabel)) {
+        return i + 1;
+      }
     }
-    if (column == 0)
-      throw new SQLException("The column '" + columnLabel + "' does not exists (Result Set element: " + rowCount + ")");
-    return column;
+    throw new SQLException("The column '" + columnLabel + "' does not exists (Result Set element: " + rowCount + ")");
   }
 
   private int getFieldIndex(int columnIndex) throws SQLException {
