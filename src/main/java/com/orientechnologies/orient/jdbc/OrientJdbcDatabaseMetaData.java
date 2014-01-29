@@ -659,10 +659,13 @@ public class OrientJdbcDatabaseMetaData implements DatabaseMetaData {
           final ODocument doc = new ODocument();
           doc.field("TABLE_CAT", (Object) null);
           doc.field("TABLE_SCHEM", (Object) null);
-          doc.field("TABLE_TYPE", type);
           doc.field("TABLE_NAME", cls.getName());
+          doc.field("TABLE_TYPE", type);
           doc.field("REMARKS", (Object) null);
+          doc.field("TYPE_CAT", (Object) null);
+          doc.field("TYPE_SCHEM", (Object) null);
           doc.field("TYPE_NAME", (Object) null);
+          doc.field("SELF_REFERENCING_COL_NAME", (Object) null);
           doc.field("REF_GENERATION", (Object) null);
           records.add(doc);
         }

@@ -210,7 +210,28 @@ public class OrientJdbcDatabaseMetaDataTest extends OrientJdbcBaseTest {
     }
   }
 
-  private void assertFieldsInItemClassByColumnNamePattern(String columnNamePattern, String... expectedColumnNames) throws Throwable {
+  @Test 
+  public void getTablesReturnsColumnsInOrderSpecifiedInInterface() throws Throwable {
+    ResultSet columns = conn.getMetaData().getTables(null, null, null, new String[] { "TABLE" } );
+    assertColumnLabelIndexInResultSet(columns, "TABLE_CAT", 1);
+    assertColumnLabelIndexInResultSet(columns, "TABLE_SCHEM", 2);
+    assertColumnLabelIndexInResultSet(columns, "TABLE_NAME", 3);
+    assertColumnLabelIndexInResultSet(columns, "TABLE_TYPE", 4);
+    assertColumnLabelIndexInResultSet(columns, "REMARKS", 5);
+    assertColumnLabelIndexInResultSet(columns, "TYPE_CAT", 6);
+    assertColumnLabelIndexInResultSet(columns, "TYPE_SCHEM", 7);
+    assertColumnLabelIndexInResultSet(columns, "TYPE_NAME", 8);
+    assertColumnLabelIndexInResultSet(columns, "SELF_REFERENCING_COL_NAME", 9);
+    assertColumnLabelIndexInResultSet(columns, "REF_GENERATION", 10);
+  }
+
+  
+  private void assertColumnLabelIndexInResultSet(ResultSet resultSet, String columnLabel, int expectedIndex) throws SQLException {
+    int actualIndex = resultSet.findColumn(columnLabel);
+    assertEquals("Column '" + columnLabel + "' index is wrong, ", expectedIndex, actualIndex);
+  }
+
+private void assertFieldsInItemClassByColumnNamePattern(String columnNamePattern, String... expectedColumnNames) throws Throwable {
     Collection<String> expectedColumns = new ArrayList<String>(Arrays.asList(expectedColumnNames));
 
     DatabaseMetaData metadata = conn.getMetaData();
