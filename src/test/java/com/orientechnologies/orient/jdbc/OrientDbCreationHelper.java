@@ -63,7 +63,7 @@ public class OrientDbCreationHelper {
 		// class Article
 		OClass article = schema.createClass("Article");
 
-		article.createProperty("uuid", OType.INTEGER).createIndex(INDEX_TYPE.UNIQUE);
+		article.createProperty("uuid", OType.INTEGER).setNotNull(true).createIndex(INDEX_TYPE.UNIQUE);
 		article.createProperty("date", OType.DATE).createIndex(INDEX_TYPE.NOTUNIQUE);
 		article.createProperty("title", OType.STRING);
 		article.createProperty("content", OType.STRING);

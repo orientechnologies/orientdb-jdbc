@@ -137,10 +137,12 @@ public class OrientJdbcDatabaseMetaData implements DatabaseMetaData {
     final List<ODocument> records = new ArrayList<ODocument>();
     for (OClass clazz : database.getMetadata().getSchema().getClasses()) {
       if (tablePattern.matcher(clazz.getName()).matches()) {
+        int propertyIndex = 1;
         for (OProperty property : clazz.properties()) {
           if (columnPattern.matcher(property.getName()).matches()) {
-            records.add(createDocumentFromProperty(property, clazz));
+            records.add(createDocumentFromProperty(property, clazz, propertyIndex));
           }
+          propertyIndex++;
         }
       }
     }
@@ -154,15 +156,35 @@ public class OrientJdbcDatabaseMetaData implements DatabaseMetaData {
    * 
    * @param property
    * @param clazz
+   * @param propertyIndexInClass 
    * @return
    * @see #getColumns(String, String, String, String)
    */
-  protected ODocument createDocumentFromProperty(OProperty property, OClass clazz) {
-    return new ODocument().field("TABLE_CAT", database.getName())
-        .field("TABLE_NAME", clazz.getName()).field("COLUMN_NAME", property.getName())
-        .field("DATA_TYPE", OrientJdbcResultSetMetaData.getSqlType(property.getType()))
-        .field("COLUMN_SIZE", 1).field("NULLABLE", !property.isNotNull())
-        .field("IS_NULLABLE", property.isNotNull() ? "NO" : "YES");
+  protected ODocument createDocumentFromProperty(OProperty property, OClass clazz, int propertyIndexInClass) {
+    return new ODocument()
+      .field("TABLE_CAT", database.getName())
+      .field("TABLE_SCHEM", (Object) null)
+      .field("TABLE_NAME", clazz.getName())
+      .field("COLUMN_NAME", property.getName())
+      .field("DATA_TYPE", OrientJdbcResultSetMetaData.getSqlType(property.getType()))
+      .field("TYPE_NAME", property.getType().name())
+      .field("COLUMN_SIZE", 1)
+      .field("BUFFER_LENGTH", (Object) null) // unused
+      .field("DECIMAL_DIGITS", (Object) null)
+      .field("NUM_PREC_RADIX", (Object) null)
+      .field("NULLABLE", (int) (property.isNotNull() ? attributeNoNulls : attributeNullable))
+      .field("REMARKS", (Object) null)
+      .field("COLUMN_DEF", (Object) null)
+      .field("SQL_DATA_TYPE", (Object) null) // unused
+      .field("SQL_DATETIME_SUB", (Object) null) // unused
+      .field("CHAR_OCTET_LENGTH", (Object) null)
+      .field("ORDINAL_POSITION", propertyIndexInClass)
+      .field("IS_NULLABLE", property.isNotNull() ? "NO" : "YES")
+      .field("SCOPE_CATALOG", (Object) null)
+      .field("SCOPE_SCHEMA", (Object) null)
+      .field("SCOPE_TABLE", (Object) null)
+      .field("SOURCE_DATA_TYPE", (Object) null)
+      .field("IS_AUTOINCREMENT", "");
   }
 
   protected Pattern createPattern(final String NamePattern) {

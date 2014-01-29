@@ -17,8 +17,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import junit.framework.Assert;
-
 import org.junit.Before;
 import org.junit.Test;
 
@@ -212,19 +210,76 @@ public class OrientJdbcDatabaseMetaDataTest extends OrientJdbcBaseTest {
 
   @Test 
   public void getTablesReturnsColumnsInOrderSpecifiedInInterface() throws Throwable {
-    ResultSet columns = conn.getMetaData().getTables(null, null, null, new String[] { "TABLE" } );
+    ResultSet tables = conn.getMetaData().getTables(null, null, null, new String[] { "TABLE" } );
+    assertColumnLabelIndexInResultSet(tables, "TABLE_CAT", 1);
+    assertColumnLabelIndexInResultSet(tables, "TABLE_SCHEM", 2);
+    assertColumnLabelIndexInResultSet(tables, "TABLE_NAME", 3);
+    assertColumnLabelIndexInResultSet(tables, "TABLE_TYPE", 4);
+    assertColumnLabelIndexInResultSet(tables, "REMARKS", 5);
+    assertColumnLabelIndexInResultSet(tables, "TYPE_CAT", 6);
+    assertColumnLabelIndexInResultSet(tables, "TYPE_SCHEM", 7);
+    assertColumnLabelIndexInResultSet(tables, "TYPE_NAME", 8);
+    assertColumnLabelIndexInResultSet(tables, "SELF_REFERENCING_COL_NAME", 9);
+    assertColumnLabelIndexInResultSet(tables, "REF_GENERATION", 10);
+  }
+  
+  @Test
+  public void getColumnsReturnsColumnsInOrderSpecifiedInInterface() throws Throwable {
+    ResultSet columns = conn.getMetaData().getColumns(null, null, "Item", null);
     assertColumnLabelIndexInResultSet(columns, "TABLE_CAT", 1);
     assertColumnLabelIndexInResultSet(columns, "TABLE_SCHEM", 2);
     assertColumnLabelIndexInResultSet(columns, "TABLE_NAME", 3);
-    assertColumnLabelIndexInResultSet(columns, "TABLE_TYPE", 4);
-    assertColumnLabelIndexInResultSet(columns, "REMARKS", 5);
-    assertColumnLabelIndexInResultSet(columns, "TYPE_CAT", 6);
-    assertColumnLabelIndexInResultSet(columns, "TYPE_SCHEM", 7);
-    assertColumnLabelIndexInResultSet(columns, "TYPE_NAME", 8);
-    assertColumnLabelIndexInResultSet(columns, "SELF_REFERENCING_COL_NAME", 9);
-    assertColumnLabelIndexInResultSet(columns, "REF_GENERATION", 10);
+    assertColumnLabelIndexInResultSet(columns, "COLUMN_NAME", 4);
+    assertColumnLabelIndexInResultSet(columns, "DATA_TYPE", 5);
+    assertColumnLabelIndexInResultSet(columns, "TYPE_NAME", 6);
+    assertColumnLabelIndexInResultSet(columns, "COLUMN_SIZE", 7);
+    assertColumnLabelIndexInResultSet(columns, "BUFFER_LENGTH", 8);
+    assertColumnLabelIndexInResultSet(columns, "DECIMAL_DIGITS", 9);
+    assertColumnLabelIndexInResultSet(columns, "NUM_PREC_RADIX", 10);
+    assertColumnLabelIndexInResultSet(columns, "NULLABLE", 11);
+    assertColumnLabelIndexInResultSet(columns, "REMARKS", 12);
+    assertColumnLabelIndexInResultSet(columns, "COLUMN_DEF", 13);
+    assertColumnLabelIndexInResultSet(columns, "SQL_DATA_TYPE", 14);
+    assertColumnLabelIndexInResultSet(columns, "SQL_DATETIME_SUB", 15);
+    assertColumnLabelIndexInResultSet(columns, "CHAR_OCTET_LENGTH", 16);
+    assertColumnLabelIndexInResultSet(columns, "ORDINAL_POSITION", 17);
+    assertColumnLabelIndexInResultSet(columns, "IS_NULLABLE", 18);
+    assertColumnLabelIndexInResultSet(columns, "SCOPE_CATALOG", 19);
+    assertColumnLabelIndexInResultSet(columns, "SCOPE_SCHEMA", 20);
+    assertColumnLabelIndexInResultSet(columns, "SCOPE_TABLE", 21);
+    assertColumnLabelIndexInResultSet(columns, "SOURCE_DATA_TYPE", 22);
+    assertColumnLabelIndexInResultSet(columns, "IS_AUTOINCREMENT", 23);
+  }
+  
+  @Test
+  public void getColumnsNullableValueIsCorrectOnNotNullField() throws Throwable {
+    ResultSet columns = conn.getMetaData().getColumns(null, null, "Article", "uuid");
+    assertTrue("Expected to find 'uuid' field from Article-class", columns.next());
+    assertEquals(DatabaseMetaData.attributeNoNulls, columns.getInt("NULLABLE"));
   }
 
+  @Test
+  public void getColumnsNullableValueIsCorrectOnNullableField() throws Throwable {
+    ResultSet columns = conn.getMetaData().getColumns(null, null, "Article", "title");
+    assertTrue("Expected to find 'title' field from Article-class", columns.next());
+    assertEquals(DatabaseMetaData.attributeNullable, columns.getInt("NULLABLE"));
+  }
+
+  @Test
+  public void getColumnsOrdinalPositionStaysTheSameOnMultipleQueries() throws Throwable {
+    ResultSet columns = conn.getMetaData().getColumns(null, null, "Item", "intKey");
+    int ordinalPositionFromDirectFetch = columns.getInt("ORDINAL_POSITION");
+    
+    int ordinalPositionWhenFetchingAll = -1;
+    columns = conn.getMetaData().getColumns(null, null, null, null);
+    while (columns.next()) {
+      if ("intKey".equals(columns.getString("COLUMN_NAME"))) {
+        ordinalPositionWhenFetchingAll = columns.getInt("ORDINAL_POSITION");
+        break;
+      }
+    }
+    assertEquals(ordinalPositionFromDirectFetch, ordinalPositionWhenFetchingAll);
+  }
   
   private void assertColumnLabelIndexInResultSet(ResultSet resultSet, String columnLabel, int expectedIndex) throws SQLException {
     int actualIndex = resultSet.findColumn(columnLabel);
