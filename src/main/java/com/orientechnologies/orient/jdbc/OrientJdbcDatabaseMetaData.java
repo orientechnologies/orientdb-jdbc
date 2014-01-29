@@ -25,6 +25,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -91,14 +92,12 @@ public class OrientJdbcDatabaseMetaData implements DatabaseMetaData {
 
   public ResultSet getAttributes(String catalog, String schemaPattern, String typeNamePattern, String attributeNamePattern)
       throws SQLException {
-
-    return null;
+    return createEmptyResultSet();
   }
 
   public ResultSet getBestRowIdentifier(String catalog, String schema, String table, int scope, boolean nullable)
       throws SQLException {
-
-    return null;
+    return createEmptyResultSet();
   }
 
   public String getCatalogSeparator() throws SQLException {
@@ -112,13 +111,17 @@ public class OrientJdbcDatabaseMetaData implements DatabaseMetaData {
   }
 
   public ResultSet getCatalogs() throws SQLException {
-
-    return null;
+    return new OrientJdbcResultSet(new OrientJdbcStatement(connection), Collections.singletonList(new ODocument().field("TABLE_CAT", database.getName())), ResultSet.TYPE_FORWARD_ONLY,
+        ResultSet.CONCUR_READ_ONLY, ResultSet.HOLD_CURSORS_OVER_COMMIT);
   }
 
   public ResultSet getClientInfoProperties() throws SQLException {
+    return createEmptyResultSet();
+  }
 
-    return null;
+  private ResultSet createEmptyResultSet() throws SQLException {
+    return new OrientJdbcResultSet(new OrientJdbcStatement(connection), Collections.<ODocument>emptyList(), ResultSet.TYPE_FORWARD_ONLY,
+        ResultSet.CONCUR_READ_ONLY, ResultSet.HOLD_CURSORS_OVER_COMMIT);
   }
 
   public ResultSet getColumnPrivileges(final String catalog, final String schema, final String table, final String columnNamePattern)
@@ -553,13 +556,11 @@ public class OrientJdbcDatabaseMetaData implements DatabaseMetaData {
   }
 
   public ResultSet getSchemas() throws SQLException {
-
-    return null;
+    return createEmptyResultSet();
   }
 
   public ResultSet getSchemas(String catalog, String schemaPattern) throws SQLException {
-
-    return null;
+    return createEmptyResultSet();
   }
 
   public String getSearchStringEscape() throws SQLException {
@@ -616,8 +617,7 @@ public class OrientJdbcDatabaseMetaData implements DatabaseMetaData {
   }
 
   public ResultSet getTablePrivileges(String catalog, String schemaPattern, String tableNamePattern) throws SQLException {
-
-    return null;
+    return createEmptyResultSet();
   }
 
   public ResultSet getTableTypes() throws SQLException {
@@ -681,7 +681,7 @@ public class OrientJdbcDatabaseMetaData implements DatabaseMetaData {
   }
 
   public ResultSet getTypeInfo() throws SQLException {
-    return null;
+    return createEmptyResultSet();
   }
 
   public ResultSet getUDTs(String catalog, String schemaPattern, String typeNamePattern, int[] types) throws SQLException {
@@ -715,8 +715,7 @@ public class OrientJdbcDatabaseMetaData implements DatabaseMetaData {
   }
 
   public ResultSet getVersionColumns(String catalog, String schema, String table) throws SQLException {
-
-    return null;
+    return createEmptyResultSet();
   }
 
   public boolean insertsAreDetected(int type) throws SQLException {
@@ -1189,6 +1188,6 @@ public class OrientJdbcDatabaseMetaData implements DatabaseMetaData {
   }
 
   public ResultSet getPseudoColumns(String arg0, String arg1, String arg2, String arg3) throws SQLException {
-    return null;
+    return createEmptyResultSet();
   }
 }
