@@ -17,10 +17,29 @@ Orient-jdbc are deployed on sonatype's maven repository. At the moment only snap
 </pre>
 
 *How to build*
+Orient-jdbc uses maven.
 
-Orient-jdbc uses maven, so do a 
+Edit pom.xml file.
+
+<pre>
+<version>1.6.4</version>
+<properties>
+	<orient.version>1.6.4</orient.version>
+</properties>
+</pre>
+
+<pre><version></pre> is orientdb-jdbc driver version, you'd build.
+<pre><orient.version></pre> is orientdb-enterprise version, you'd use to build.
+
+As of Feb 4th, 2014, the supported versions are upto, 1.6.x, 1.7-SNAPSHOT, 2.0-SNAPSHOT.
+
+The following command builds the jar after tests are successfully.
 
 <pre>mvn install</pre>
+
+You can skip tests,
+
+<pre>mvn install -Dmaven.test.skip=true</pre>
 
 
 *How to build a jar-with-dependencies*
@@ -29,9 +48,13 @@ Do a
 
 <pre>mvn assembly:assembly</pre>
 
+again, you can skip tests,
+
+<pre>mvn assembly:assembly -Dmaven.test.skip=true</pre>
+
 to obtain a jar with dependency included under target directory.
 
-Just copy orientdb-jdbc-1.0-SNAPSHOT-all.jar to your classpath.
+Just copy orientdb-jdbc-1.6.4-SNAPSHOT-all.jar to your classpath.
 
 It is very usefull to include under applications such as DBVisualizer.
 
