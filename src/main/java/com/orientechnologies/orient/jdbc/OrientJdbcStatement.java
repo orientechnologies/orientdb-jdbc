@@ -115,20 +115,6 @@ public class OrientJdbcStatement implements Statement {
       return null;
   }
 
-  /*
-   * private OrientJdbcResultSet executeCommand() throws SQLException { try {
-   * 
-   * // documents = query.setDatabase(database).execute(); rawResult = database.command(query).execute(); if (rawResult instanceof
-   * List<?>) documents = (List<ODocument>) rawResult;
-   * 
-   * resultSet = new OrientJdbcResultSet(this, documents, resultSetType, resultSetConcurrency, resultSetHoldability); return
-   * resultSet;
-   * 
-   * } catch (OQueryParsingException e) { throw new SQLSyntaxErrorException("Error on parsing the query", e); }
-   * 
-   * }
-   */
-
   public int executeUpdate(final String sql) throws SQLException {
     query = new OCommandSQL(sql);
     rawResult = database.command(query).execute();

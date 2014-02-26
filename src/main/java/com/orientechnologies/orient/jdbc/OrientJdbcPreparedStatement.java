@@ -86,7 +86,6 @@ public class OrientJdbcPreparedStatement extends OrientJdbcStatement implements 
       }
     }
 
-    // return super.executeQuery(sql);
     resultSet = new OrientJdbcResultSet(this, documents, resultSetType, resultSetConcurrency, resultSetHoldability);
     return resultSet;
   }
