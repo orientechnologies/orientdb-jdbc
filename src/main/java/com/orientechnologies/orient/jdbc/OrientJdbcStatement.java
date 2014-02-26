@@ -87,25 +87,21 @@ public class OrientJdbcStatement implements Statement {
   }
 
   public boolean execute(final String sql) throws SQLException {
-    if ("".equals(sql))
+    if ("".equals(sql)) {
       return false;
+    }
 
-    if (sql.equalsIgnoreCase("select 1")) {
-      documents = new ArrayList<ODocument>();
-      documents.add(new ODocument().field("1", 1));
-    } else {
-      query = new OCommandSQL(sql);
-      try {
+    query = new OCommandSQL(sql);
+    try {
 
-        rawResult = database.command(query).execute();
-        if (rawResult instanceof List<?>) {
-          documents = (List<ODocument>) rawResult;
-        } else
-          return false;
+      rawResult = database.command(query).execute();
+      if (rawResult instanceof List<?>) {
+        documents = (List<ODocument>) rawResult;
+      } else
+        return false;
 
-      } catch (OQueryParsingException e) {
-        throw new SQLSyntaxErrorException("Error on parsing the query", e);
-      }
+    } catch (OQueryParsingException e) {
+      throw new SQLSyntaxErrorException("Error on parsing the query", e);
     }
     resultSet = new OrientJdbcResultSet(this, documents, resultSetType, resultSetConcurrency, resultSetHoldability);
     return true;
