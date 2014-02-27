@@ -16,8 +16,6 @@
  */
 package com.orientechnologies.orient.jdbc;
 
-import static java.util.Collections.emptyList;
-
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -45,7 +43,6 @@ public class OrientJdbcStatement implements Statement {
 
   // protected OCommandSQL query;
   protected OCommandRequest            query;
-  protected List<ODocument>            documents;
   protected boolean                    closed;
 
   private ResultSet                    resultSet;
@@ -81,7 +78,6 @@ public class OrientJdbcStatement implements Statement {
     this.connection = iConnection;
     this.database = iConnection.getDatabase();
     ODatabaseRecordThreadLocal.INSTANCE.set(database);
-    documents = emptyList();
     batches = new ArrayList<String>();
     this.resultSetType = resultSetType;
     this.resultSetConcurrency = resultSetConcurrency;
@@ -93,45 +89,62 @@ public class OrientJdbcStatement implements Statement {
     return this.execute(sql, new Object[0]);
   }
 
-  protected boolean execute(final String sql, Object... args) throws SQLException {
-    if ("".equals(sql)) {
+  protected boolean execute(final String queryString, Object... parameters) throws SQLException {
+    if ("".equals(queryString)) {
       setResult();
       return false;
     }
 
-    query = new OCommandSQL(sql);
     try {
+      query = new OCommandSQL(queryString);
+      Object rawResult = database.command(query).execute(parameters);
 
-      Object rawResult = database.command(query).execute(args);
-      if (rawResult instanceof List<?>) {
-        documents = (List<ODocument>) rawResult;
+      if (isSelectQuery(rawResult)) {
+        return handleSelectQueryResult((List<ODocument>) rawResult);
       } else {
-        Integer updateCount = (rawResult instanceof Integer) ? (Integer) rawResult : 1;
-        setResult(updateCount);
-        return false;
+        return handleUpdateQueryResult(rawResult);
       }
-
     } catch (OQueryParsingException e) {
       throw new SQLSyntaxErrorException("Error on parsing the query", e);
     }
+  }
 
-    List<String> searchedColumns;
-    Map<String,Object> projections = new OCommandExecutorSQLSelect().parse(query).getProjections();
-    if (projections != null && !projections.isEmpty()) {
-      searchedColumns = new ArrayList<String>(projections.keySet());
-    } else {
-      Set<String> fields = new HashSet<String>();
-      for (ODocument document : documents) {
-        fields.addAll(Arrays.asList(document.fieldNames()));
-      }
-      searchedColumns = new ArrayList<String>(fields);
-    }
+  private boolean isSelectQuery(Object rawResult) {
+    return rawResult instanceof List<?>;
+  }
 
-
-
-    setResult(new OrientJdbcResultSet(this, searchedColumns, documents, resultSetType, resultSetConcurrency, resultSetHoldability));
+  private boolean handleSelectQueryResult(List<ODocument> documents) throws SQLException {
+    List<String> projectedColumns = getProjectedColumns(documents);
+    setResult(new OrientJdbcResultSet(this, projectedColumns, documents, resultSetType, resultSetConcurrency, resultSetHoldability));
     return true;
+  }
 
+  private List<String> getProjectedColumns(List<ODocument> documents) {
+    Map<String,Object> projections = new OCommandExecutorSQLSelect().parse(query).getProjections();
+
+    if (hasDefinedProjections(projections)) {
+      return new ArrayList<String>(projections.keySet());
+    } else {
+      return getFieldsFromDocuments(documents);
+    }
+  }
+
+  private List<String> getFieldsFromDocuments(List<ODocument> documents) {
+    Set<String> fields = new HashSet<String>();
+    for (ODocument document : documents) {
+      fields.addAll(Arrays.asList(document.fieldNames()));
+    }
+    return new ArrayList<String>(fields);
+  }
+
+  private boolean hasDefinedProjections(Map<String, Object> projections) {
+    return projections != null && !projections.isEmpty();
+  }
+
+  private boolean handleUpdateQueryResult(Object rawResult) {
+    Integer updateCount = (rawResult instanceof Integer) ? (Integer) rawResult : 1;
+    setResult(updateCount);
+    return false;
   }
 
   public ResultSet executeQuery(final String sql) throws SQLException {
