@@ -24,14 +24,14 @@ import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import com.orientechnologies.orient.core.command.OCommandRequest;
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
 import com.orientechnologies.orient.core.db.graph.OGraphDatabase;
 import com.orientechnologies.orient.core.exception.OQueryParsingException;
 import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.sql.OCommandExecutorSQLSelect;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
 
 /**
@@ -103,7 +103,20 @@ public class OrientJdbcStatement implements Statement {
     } catch (OQueryParsingException e) {
       throw new SQLSyntaxErrorException("Error on parsing the query", e);
     }
-    resultSet = new OrientJdbcResultSet(this, documents, resultSetType, resultSetConcurrency, resultSetHoldability);
+
+    List<String> searchedColumns;
+    Map<String,Object> projections = new OCommandExecutorSQLSelect().parse(query).getProjections();
+    if (projections != null && !projections.isEmpty()) {
+      searchedColumns = new ArrayList<String>(projections.keySet());
+    } else {
+      Set<String> fields = new HashSet<String>();
+      for (ODocument document : documents) {
+        fields.addAll(Arrays.asList(document.fieldNames()));
+      }
+      searchedColumns = new ArrayList<String>(fields);
+    }
+
+    resultSet = new OrientJdbcResultSet(this, searchedColumns, documents, resultSetType, resultSetConcurrency, resultSetHoldability);
     return true;
 
   }
