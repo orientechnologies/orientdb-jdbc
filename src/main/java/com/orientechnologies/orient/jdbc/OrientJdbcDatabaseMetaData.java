@@ -168,7 +168,7 @@ public class OrientJdbcDatabaseMetaData implements DatabaseMetaData {
       .field("COLUMN_NAME", property.getName())
       .field("DATA_TYPE", OrientJdbcResultSetMetaData.getSqlType(property.getType()))
       .field("TYPE_NAME", property.getType().name())
-      .field("COLUMN_SIZE", 1)
+      .field("COLUMN_SIZE", getColumnSize(property))
       .field("BUFFER_LENGTH", (Object) null) // unused
       .field("DECIMAL_DIGITS", (Object) null)
       .field("NUM_PREC_RADIX", (Object) null)
@@ -186,6 +186,15 @@ public class OrientJdbcDatabaseMetaData implements DatabaseMetaData {
       .field("SOURCE_DATA_TYPE", (Object) null)
       .field("IS_AUTOINCREMENT", "");
   }
+
+  private Object getColumnSize(OProperty property) {
+    try {
+      return Integer.parseInt(property.getMax());
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
 
   protected Pattern createPattern(final String NamePattern) {
     Pattern columnPattern = Pattern.compile(".*");
