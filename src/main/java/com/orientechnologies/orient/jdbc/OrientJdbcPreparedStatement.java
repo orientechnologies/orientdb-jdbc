@@ -59,7 +59,7 @@ public class OrientJdbcPreparedStatement extends OrientJdbcStatement implements 
   private final String               sql;
   private final Map<Integer, Object> params;
 
-  private ResultHolder resultHolder;
+
 
   @Override
   public boolean execute(String sql) throws SQLException {
@@ -74,34 +74,13 @@ public class OrientJdbcPreparedStatement extends OrientJdbcStatement implements 
 
   @SuppressWarnings("unchecked")
   public ResultSet executeQuery() throws SQLException {
-    if (sql.equalsIgnoreCase("select 1")) {
-      documents = new ArrayList<ODocument>();
-      documents.add(new ODocument().field("1", 1));
-    } else {
-      try {
-        query = new OSQLSynchQuery<ODocument>(sql);
-        documents = database.query((OQuery<? extends Object>) query, params.values().toArray());
-      } catch (OQueryParsingException e) {
-        throw new SQLSyntaxErrorException("Error on parsing the query", e);
-      }
-    }
-
-    resultSet = new OrientJdbcResultSet(this, documents, resultSetType, resultSetConcurrency, resultSetHoldability);
-    return resultSet;
+    this.execute();
+    return getResultSet();
   }
 
   public int executeUpdate() throws SQLException {
-    try {
-      query = new OCommandSQL(sql);
-      Object result = database.command(query).execute(params.values().toArray());
-      if (result instanceof Integer) {
-        return ((Integer) result).intValue();
-      } else {
-        return 1;
-      }
-    } catch (OQueryParsingException e) {
-      throw new SQLSyntaxErrorException("Error on parsing the command", e);
-    }
+    this.execute();
+    return getUpdateCount();
   }
 
   public void setNull(int parameterIndex, int sqlType) throws SQLException {
@@ -185,34 +164,8 @@ public class OrientJdbcPreparedStatement extends OrientJdbcStatement implements 
     params.put(parameterIndex, x);
   }
 
-  @Override
-  public ResultSet getResultSet() throws SQLException {
-    if (null != this.resultHolder) {
-      ResultSet result = this.resultHolder.getResultSet();
-      this.resultHolder = null;
-      return result;
-    }
-    return super.getResultSet();
-  }
-
-  @Override
-  public int getUpdateCount() throws SQLException {
-    if (null != this.resultHolder) {
-      int updateCount = this.resultHolder.getUpdateCount();
-      this.resultHolder = null;
-      return updateCount;
-    }
-    return super.getUpdateCount();
-  }
-
   public boolean execute() throws SQLException {
-    if (sql.trim().toLowerCase().startsWith("select")) {
-      this.resultHolder = new ResultHolder(this.executeQuery());
-      return true;
-    } else {
-      this.resultHolder = new ResultHolder(this.executeUpdate());
-      return false;
-    }
+    return super.execute(sql, this.params.values().toArray());
   }
 
   public void addBatch() throws SQLException {
@@ -355,26 +308,5 @@ public class OrientJdbcPreparedStatement extends OrientJdbcStatement implements 
     throw new UnsupportedOperationException();
   }
 
-  private static class ResultHolder {
-    private final ResultSet resultSet;
-    private final int updateCount;
 
-    public ResultHolder(ResultSet resultSet) {
-      this.resultSet = resultSet;
-      this.updateCount = -1;
-    }
-
-    public ResultHolder(int updateCount) {
-      this.updateCount = updateCount;
-      this.resultSet = null;
-    }
-
-    public ResultSet getResultSet() {
-      return resultSet;
-    }
-
-    public int getUpdateCount() {
-      return updateCount;
-    }
-  }
 }

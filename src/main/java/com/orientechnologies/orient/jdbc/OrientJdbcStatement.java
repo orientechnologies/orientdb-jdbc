@@ -47,8 +47,10 @@ public class OrientJdbcStatement implements Statement {
   protected OCommandRequest            query;
   protected List<ODocument>            documents;
   protected boolean                    closed;
-  protected Object                     rawResult;
-  protected OrientJdbcResultSet        resultSet;
+
+  private ResultSet                    resultSet;
+  private int                          updateCount;
+
   protected List<String>               batches;
 
   protected int                        resultSetType;
@@ -61,7 +63,7 @@ public class OrientJdbcStatement implements Statement {
 
   /**
    * @param iConnection
-   * @param resultSetTypee
+   * @param resultSetType
    * @param resultSetConcurrency
    * @throws SQLException
    */
@@ -84,21 +86,30 @@ public class OrientJdbcStatement implements Statement {
     this.resultSetType = resultSetType;
     this.resultSetConcurrency = resultSetConcurrency;
     this.resultSetHoldability = resultSetHoldability;
+    setResult();
   }
 
   public boolean execute(final String sql) throws SQLException {
+    return this.execute(sql, new Object[0]);
+  }
+
+  protected boolean execute(final String sql, Object... args) throws SQLException {
     if ("".equals(sql)) {
+      setResult();
       return false;
     }
 
     query = new OCommandSQL(sql);
     try {
 
-      rawResult = database.command(query).execute();
+      Object rawResult = database.command(query).execute(args);
       if (rawResult instanceof List<?>) {
         documents = (List<ODocument>) rawResult;
-      } else
+      } else {
+        Integer updateCount = (rawResult instanceof Integer) ? (Integer) rawResult : 1;
+        setResult(updateCount);
         return false;
+      }
 
     } catch (OQueryParsingException e) {
       throw new SQLSyntaxErrorException("Error on parsing the query", e);
@@ -116,21 +127,23 @@ public class OrientJdbcStatement implements Statement {
       searchedColumns = new ArrayList<String>(fields);
     }
 
-    resultSet = new OrientJdbcResultSet(this, searchedColumns, documents, resultSetType, resultSetConcurrency, resultSetHoldability);
+
+
+    setResult(new OrientJdbcResultSet(this, searchedColumns, documents, resultSetType, resultSetConcurrency, resultSetHoldability));
     return true;
 
   }
 
   public ResultSet executeQuery(final String sql) throws SQLException {
     if (execute(sql))
-      return resultSet;
+      return getResultSet();
     else
       return null;
   }
 
   public int executeUpdate(final String sql) throws SQLException {
     query = new OCommandSQL(sql);
-    rawResult = database.command(query).execute();
+    Object rawResult = database.command(query).execute();
 
     if (rawResult instanceof ODocument)
       return 1;
@@ -240,31 +253,37 @@ public class OrientJdbcStatement implements Statement {
   }
 
   public ResultSet getResultSet() throws SQLException {
-
-    return resultSet;
+    try {
+      return this.resultSet;
+    } finally {
+      setResult();
+    }
   }
 
   public int getResultSetConcurrency() throws SQLException {
 
-    return resultSet.getConcurrency();
+    return getResultSet().getConcurrency();
   }
 
   public int getResultSetHoldability() throws SQLException {
 
-    return resultSet.getHoldability();
+    return getResultSet().getHoldability();
   }
 
   public int getResultSetType() throws SQLException {
 
-    return resultSet.getType();
+    return getResultSet().getType();
   }
 
   public int getUpdateCount() throws SQLException {
     if (isClosed())
       throw new SQLException("Statement already closed");
 
-    return -1;
-
+    try {
+      return this.updateCount;
+    } finally {
+      setResult();
+    }
   }
 
   public SQLWarning getWarnings() throws SQLException {
@@ -350,4 +369,18 @@ public class OrientJdbcStatement implements Statement {
     return false;
   }
 
+  public void setResult(ResultSet resultSet) {
+    this.resultSet = resultSet;
+    this.updateCount = -1;
+  }
+
+  public void setResult(int updateCount) {
+    this.updateCount = updateCount;
+    this.resultSet = null;
+  }
+
+  public void setResult() {
+    this.resultSet = null;
+    this.updateCount = -1;
+  }
 }

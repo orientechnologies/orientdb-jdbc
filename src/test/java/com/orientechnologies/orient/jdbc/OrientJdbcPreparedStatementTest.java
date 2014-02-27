@@ -39,8 +39,8 @@ public class OrientJdbcPreparedStatementTest extends OrientJdbcBaseTest {
   public void shouldExectuteSelectOne() throws SQLException {
     PreparedStatement stmt = conn.prepareStatement("select 1");
     assertThat(stmt.execute(), is(true));
-    assertNotNull(stmt.getResultSet());
     ResultSet resultSet = stmt.getResultSet();
+    assertNotNull(resultSet);
     resultSet.first();
     int one = resultSet.getInt("1");
     assertThat(one, is(1));
