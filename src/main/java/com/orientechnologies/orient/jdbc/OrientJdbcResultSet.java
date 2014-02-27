@@ -604,7 +604,7 @@ public class OrientJdbcResultSet implements ResultSet {
     if ("@class".equals(columnLabel))
       return document.getClassName();
     try {
-      return document.field(columnLabel, OType.STRING);
+      return document.field(columnLabel, OType.STRING).toString();
     } catch (Exception e) {
       throw new SQLException("An error occured during the retrieval of the string value at column '" + columnLabel + "'", e);
     }

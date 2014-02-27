@@ -9,6 +9,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertNotNull;
 
 public class OrientJdbcResultSetTest extends OrientJdbcBaseTest {
@@ -30,18 +31,27 @@ public class OrientJdbcResultSetTest extends OrientJdbcBaseTest {
     public void findColumnsReturnsCorrectColumnIndex() throws Throwable {
       Statement statement = conn.createStatement();
       ResultSet resultSet = statement.executeQuery("SELECT uuid, title, content FROM Article");
-      
+
       assertColumnLabelIndexInResultSet(resultSet, "uuid", 1);
     }
-    
+
     @Test
     public void findColumnsReturnsCorrectColumnIndexForLastColumn() throws Throwable {
       Statement statement = conn.createStatement();
       ResultSet resultSet = statement.executeQuery("SELECT uuid, title, content FROM Article");
-      
+
       assertColumnLabelIndexInResultSet(resultSet, "content", 3);
     }
-    
+
+    @Test
+    public void intColumnCanBeReadAsString() throws Throwable{
+      Statement statement = conn.createStatement();
+      ResultSet resultSet = statement.executeQuery("SELECT stringKey, intKey FROM Item WHERE intKey = 1");
+      assertTrue(resultSet.next());
+      assertEquals("1", resultSet.getString(1));
+      assertEquals("1", resultSet.getString(2));
+    }
+
     private void assertColumnLabelIndexInResultSet(ResultSet resultSet, String columnLabel, int expectedIndex) throws SQLException {
       int actualIndex = resultSet.findColumn(columnLabel);
       assertEquals("Column '" + columnLabel + "' index is wrong, ", expectedIndex, actualIndex);
