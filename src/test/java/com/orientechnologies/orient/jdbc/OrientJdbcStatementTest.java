@@ -1,5 +1,6 @@
 package com.orientechnologies.orient.jdbc;
 
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -10,8 +11,9 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class OrientJdbcStatementTest extends OrientJdbcBaseTest {
 
@@ -37,8 +39,8 @@ public class OrientJdbcStatementTest extends OrientJdbcBaseTest {
 
 		Statement st = conn.createStatement();
 		assertThat(st.execute("select 1"), is(true));
-		assertNotNull(st.getResultSet());
-		ResultSet resultSet = st.getResultSet();
+    ResultSet resultSet = st.getResultSet();
+    assertNotNull(resultSet);
 		resultSet.first();
 		int one = resultSet.getInt("1");
 		assertThat(one, is(1));
@@ -46,6 +48,43 @@ public class OrientJdbcStatementTest extends OrientJdbcBaseTest {
 
 	}
 
-	
-	
+  @Test
+  public void getResultSetReturnsNullOnConsecutiveCalls() throws SQLException {
+    Statement st = conn.createStatement();
+    assertThat(st.execute("select 1"), is(true));
+    assertNotNull(st.getResultSet());
+    assertEquals(null, st.getResultSet());
+  }
+
+  @Test
+  public void getUpdateCountReturnsMinusOneOnSelectQueries() throws SQLException {
+    Statement st = conn.createStatement();
+    assertThat(st.execute("select 1"), is(true));
+    assertEquals(-1, st.getUpdateCount());
+  }
+
+  @Test
+  public void updateCountIsReportedCorrectly() throws Exception {
+    Statement statement = conn.createStatement();
+    assertFalse(statement.execute("UPDATE Item SET published = true;"));
+
+    assertEquals(20, statement.getUpdateCount());
+  }
+
+  @Test
+  public void updateCountIsMinusOneOnConsecutiveCalls() throws Exception {
+    Statement statement = conn.createStatement();
+    assertFalse(statement.execute("UPDATE Item SET published = true;"));
+
+    statement.getUpdateCount();
+    assertEquals(-1, statement.getUpdateCount());
+  }
+
+  @Test
+  public void getResultSetReturnsNullOnUpdates() throws Exception {
+    Statement statement = conn.createStatement();
+    assertFalse(statement.execute("UPDATE Item SET published = true;"));
+
+    assertEquals(null,statement.getResultSet());
+  }
 }

@@ -25,9 +25,11 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import com.orientechnologies.orient.core.OConstants;
 import com.orientechnologies.orient.core.db.record.ODatabaseRecord;
@@ -90,14 +92,12 @@ public class OrientJdbcDatabaseMetaData implements DatabaseMetaData {
 
   public ResultSet getAttributes(String catalog, String schemaPattern, String typeNamePattern, String attributeNamePattern)
       throws SQLException {
-
-    return null;
+    return createEmptyResultSet();
   }
 
   public ResultSet getBestRowIdentifier(String catalog, String schema, String table, int scope, boolean nullable)
       throws SQLException {
-
-    return null;
+    return createEmptyResultSet();
   }
 
   public String getCatalogSeparator() throws SQLException {
@@ -111,13 +111,17 @@ public class OrientJdbcDatabaseMetaData implements DatabaseMetaData {
   }
 
   public ResultSet getCatalogs() throws SQLException {
-
-    return null;
+    return new OrientJdbcResultSet(new OrientJdbcStatement(connection), Collections.singletonList(new ODocument().field("TABLE_CAT", database.getName())), ResultSet.TYPE_FORWARD_ONLY,
+        ResultSet.CONCUR_READ_ONLY, ResultSet.HOLD_CURSORS_OVER_COMMIT);
   }
 
   public ResultSet getClientInfoProperties() throws SQLException {
+    return createEmptyResultSet();
+  }
 
-    return null;
+  private ResultSet createEmptyResultSet() throws SQLException {
+    return new OrientJdbcResultSet(new OrientJdbcStatement(connection), Collections.<ODocument>emptyList(), ResultSet.TYPE_FORWARD_ONLY,
+        ResultSet.CONCUR_READ_ONLY, ResultSet.HOLD_CURSORS_OVER_COMMIT);
   }
 
   public ResultSet getColumnPrivileges(final String catalog, final String schema, final String table, final String columnNamePattern)
@@ -127,21 +131,77 @@ public class OrientJdbcDatabaseMetaData implements DatabaseMetaData {
 
   public ResultSet getColumns(final String catalog, final String schemaPattern, final String tableNamePattern,
       final String columnNamePattern) throws SQLException {
+    Pattern tablePattern = createPattern(tableNamePattern);
+    Pattern columnPattern = createPattern(columnNamePattern);
 
     final List<ODocument> records = new ArrayList<ODocument>();
-
-    final OClass clazz = database.getMetadata().getSchema().getClass(tableNamePattern);
-    if (clazz != null) {
-      final OProperty prop = clazz.getProperty(columnNamePattern);
-      if (prop != null) {
-        records.add((ODocument) new ODocument().field("TABLE_CAT", database.getName()).field("TABLE_NAME", clazz.getName())
-            .field("COLUMN_NAME", prop.getName()).field("DATA_TYPE", OrientJdbcResultSetMetaData.getSqlType(prop.getType()))
-            .field("COLUMN_SIZE", 1).field("NULLABLE", !prop.isNotNull()).field("IS_NULLABLE", prop.isNotNull() ? "NO" : "YES"));
+    for (OClass clazz : database.getMetadata().getSchema().getClasses()) {
+      if (tablePattern.matcher(clazz.getName()).matches()) {
+        int propertyIndex = 1;
+        for (OProperty property : clazz.properties()) {
+          if (columnPattern.matcher(property.getName()).matches()) {
+            records.add(createDocumentFromProperty(property, clazz, propertyIndex));
+          }
+          propertyIndex++;
+        }
       }
     }
 
     return new OrientJdbcResultSet(new OrientJdbcStatement(connection), records, ResultSet.TYPE_FORWARD_ONLY,
         ResultSet.CONCUR_READ_ONLY, ResultSet.HOLD_CURSORS_OVER_COMMIT);
+  }
+
+  /**
+   * Created column description document from given property
+   * 
+   * @param property
+   * @param clazz
+   * @param propertyIndexInClass 
+   * @return
+   * @see #getColumns(String, String, String, String)
+   */
+  protected ODocument createDocumentFromProperty(OProperty property, OClass clazz, int propertyIndexInClass) {
+    return new ODocument()
+      .field("TABLE_CAT", database.getName())
+      .field("TABLE_SCHEM", (Object) null)
+      .field("TABLE_NAME", clazz.getName())
+      .field("COLUMN_NAME", property.getName())
+      .field("DATA_TYPE", OrientJdbcResultSetMetaData.getSqlType(property.getType()))
+      .field("TYPE_NAME", property.getType().name())
+      .field("COLUMN_SIZE", getColumnSize(property))
+      .field("BUFFER_LENGTH", (Object) null) // unused
+      .field("DECIMAL_DIGITS", (Object) null)
+      .field("NUM_PREC_RADIX", (Object) null)
+      .field("NULLABLE", (int) (property.isNotNull() ? attributeNoNulls : attributeNullable))
+      .field("REMARKS", (Object) null)
+      .field("COLUMN_DEF", (Object) null)
+      .field("SQL_DATA_TYPE", (Object) null) // unused
+      .field("SQL_DATETIME_SUB", (Object) null) // unused
+      .field("CHAR_OCTET_LENGTH", (Object) null)
+      .field("ORDINAL_POSITION", propertyIndexInClass)
+      .field("IS_NULLABLE", property.isNotNull() ? "NO" : "YES")
+      .field("SCOPE_CATALOG", (Object) null)
+      .field("SCOPE_SCHEMA", (Object) null)
+      .field("SCOPE_TABLE", (Object) null)
+      .field("SOURCE_DATA_TYPE", (Object) null)
+      .field("IS_AUTOINCREMENT", "");
+  }
+
+  private Object getColumnSize(OProperty property) {
+    try {
+      return Integer.parseInt(property.getMax());
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+
+  protected Pattern createPattern(final String NamePattern) {
+    Pattern columnPattern = Pattern.compile(".*");
+    if (null != NamePattern) {
+      columnPattern = Pattern.compile(NamePattern.replaceAll("-", "\\-").replaceAll("_", ".").replaceAll("%", ".*"));
+    }
+    return columnPattern;
   }
 
   public Connection getConnection() throws SQLException {
@@ -527,13 +587,11 @@ public class OrientJdbcDatabaseMetaData implements DatabaseMetaData {
   }
 
   public ResultSet getSchemas() throws SQLException {
-
-    return null;
+    return createEmptyResultSet();
   }
 
   public ResultSet getSchemas(String catalog, String schemaPattern) throws SQLException {
-
-    return null;
+    return createEmptyResultSet();
   }
 
   public String getSearchStringEscape() throws SQLException {
@@ -590,8 +648,7 @@ public class OrientJdbcDatabaseMetaData implements DatabaseMetaData {
   }
 
   public ResultSet getTablePrivileges(String catalog, String schemaPattern, String tableNamePattern) throws SQLException {
-
-    return null;
+    return createEmptyResultSet();
   }
 
   public ResultSet getTableTypes() throws SQLException {
@@ -608,29 +665,42 @@ public class OrientJdbcDatabaseMetaData implements DatabaseMetaData {
   }
 
   public ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types) throws SQLException {
+    
+    Pattern tablePattern = createPattern(tableNamePattern);
+    
     final Collection<OClass> classes = database.getMetadata().getSchema().getClasses();
     final List<ODocument> records = new ArrayList<ODocument>();
 
+    List<String> typeList = null;
+    if (null != types) {
+        typeList = Arrays.asList(types);
+    }
+    
     for (OClass cls : classes) {
-      final ODocument doc = new ODocument();
-      doc.field("TABLE_CAT", (Object) null);
-      doc.field("TABLE_SCHEM", (Object) null);
+      if (tablePattern.matcher(cls.getName()).matches()) {
+        String type;
+        if (SYSTEM_TABLES.contains(cls.getName()))
+          type = "SYSTEM TABLE";
+        else if ("memory".equals(database.getClusterType(database.getClusterNameById(cls.getDefaultClusterId()))))
+          type = "VIEW";
+        else
+          type = "TABLE";
 
-      String type;
-      if (SYSTEM_TABLES.contains(cls.getName()))
-        type = "SYSTEM TABLE";
-      else if ("memory".equals(database.getClusterType(database.getClusterNameById(cls.getDefaultClusterId()))))
-        type = "VIEW";
-      else
-        type = "TABLE";
-
-      doc.field("TABLE_TYPE", type);
-      doc.field("TABLE_NAME", cls.getName());
-      doc.field("REMARKS", (Object) null);
-      doc.field("TYPE_NAME", (Object) null);
-      doc.field("REF_GENERATION", (Object) null);
-      records.add(doc);
-
+        if (null == typeList || typeList.contains(type)) {
+          final ODocument doc = new ODocument();
+          doc.field("TABLE_CAT", (Object) null);
+          doc.field("TABLE_SCHEM", (Object) null);
+          doc.field("TABLE_NAME", cls.getName());
+          doc.field("TABLE_TYPE", type);
+          doc.field("REMARKS", (Object) null);
+          doc.field("TYPE_CAT", (Object) null);
+          doc.field("TYPE_SCHEM", (Object) null);
+          doc.field("TYPE_NAME", (Object) null);
+          doc.field("SELF_REFERENCING_COL_NAME", (Object) null);
+          doc.field("REF_GENERATION", (Object) null);
+          records.add(doc);
+        }
+      }
     }
 
     return new OrientJdbcResultSet(new OrientJdbcStatement(connection), records, ResultSet.TYPE_FORWARD_ONLY,
@@ -642,7 +712,7 @@ public class OrientJdbcDatabaseMetaData implements DatabaseMetaData {
   }
 
   public ResultSet getTypeInfo() throws SQLException {
-    return null;
+    return createEmptyResultSet();
   }
 
   public ResultSet getUDTs(String catalog, String schemaPattern, String typeNamePattern, int[] types) throws SQLException {
@@ -676,8 +746,7 @@ public class OrientJdbcDatabaseMetaData implements DatabaseMetaData {
   }
 
   public ResultSet getVersionColumns(String catalog, String schema, String table) throws SQLException {
-
-    return null;
+    return createEmptyResultSet();
   }
 
   public boolean insertsAreDetected(int type) throws SQLException {
@@ -1150,6 +1219,6 @@ public class OrientJdbcDatabaseMetaData implements DatabaseMetaData {
   }
 
   public ResultSet getPseudoColumns(String arg0, String arg1, String arg2, String arg3) throws SQLException {
-    return null;
+    return createEmptyResultSet();
   }
 }

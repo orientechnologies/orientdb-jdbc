@@ -16,22 +16,20 @@
  */
 package com.orientechnologies.orient.jdbc;
 
-import static java.util.Collections.emptyList;
-
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import com.orientechnologies.orient.core.command.OCommandRequest;
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
 import com.orientechnologies.orient.core.db.graph.OGraphDatabase;
 import com.orientechnologies.orient.core.exception.OQueryParsingException;
 import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.sql.OCommandExecutorSQLSelect;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
 
 /**
@@ -45,10 +43,11 @@ public class OrientJdbcStatement implements Statement {
 
   // protected OCommandSQL query;
   protected OCommandRequest            query;
-  protected List<ODocument>            documents;
   protected boolean                    closed;
-  protected Object                     rawResult;
-  protected OrientJdbcResultSet        resultSet;
+
+  private ResultSet                    resultSet;
+  private int                          updateCount;
+
   protected List<String>               batches;
 
   protected int                        resultSetType;
@@ -61,7 +60,7 @@ public class OrientJdbcStatement implements Statement {
 
   /**
    * @param iConnection
-   * @param resultSetTypee
+   * @param resultSetType
    * @param resultSetConcurrency
    * @throws SQLException
    */
@@ -79,63 +78,85 @@ public class OrientJdbcStatement implements Statement {
     this.connection = iConnection;
     this.database = iConnection.getDatabase();
     ODatabaseRecordThreadLocal.INSTANCE.set(database);
-    documents = emptyList();
     batches = new ArrayList<String>();
     this.resultSetType = resultSetType;
     this.resultSetConcurrency = resultSetConcurrency;
     this.resultSetHoldability = resultSetHoldability;
+    setResult();
   }
 
   public boolean execute(final String sql) throws SQLException {
-    if ("".equals(sql))
+    return this.execute(sql, new Object[0]);
+  }
+
+  protected boolean execute(final String queryString, Object... parameters) throws SQLException {
+    if ("".equals(queryString)) {
+      setResult();
       return false;
-
-    if (sql.equalsIgnoreCase("select 1")) {
-      documents = new ArrayList<ODocument>();
-      documents.add(new ODocument().field("1", 1));
-    } else {
-      query = new OCommandSQL(sql);
-      try {
-
-        rawResult = database.command(query).execute();
-        if (rawResult instanceof List<?>) {
-          documents = (List<ODocument>) rawResult;
-        } else
-          return false;
-
-      } catch (OQueryParsingException e) {
-        throw new SQLSyntaxErrorException("Error on parsing the query", e);
-      }
     }
-    resultSet = new OrientJdbcResultSet(this, documents, resultSetType, resultSetConcurrency, resultSetHoldability);
-    return true;
 
+    try {
+      query = new OCommandSQL(queryString);
+      Object rawResult = database.command(query).execute(parameters);
+
+      if (isSelectQuery(rawResult)) {
+        return handleSelectQueryResult((List<ODocument>) rawResult);
+      } else {
+        return handleUpdateQueryResult(rawResult);
+      }
+    } catch (OQueryParsingException e) {
+      throw new SQLSyntaxErrorException("Error on parsing the query", e);
+    }
+  }
+
+  private boolean isSelectQuery(Object rawResult) {
+    return rawResult instanceof List<?>;
+  }
+
+  private boolean handleSelectQueryResult(List<ODocument> documents) throws SQLException {
+    List<String> projectedColumns = getProjectedColumns(documents);
+    setResult(new OrientJdbcResultSet(this, projectedColumns, documents, resultSetType, resultSetConcurrency, resultSetHoldability));
+    return true;
+  }
+
+  private List<String> getProjectedColumns(List<ODocument> documents) {
+    Map<String,Object> projections = new OCommandExecutorSQLSelect().parse(query).getProjections();
+
+    if (hasDefinedProjections(projections)) {
+      return new ArrayList<String>(projections.keySet());
+    } else {
+      return getFieldsFromDocuments(documents);
+    }
+  }
+
+  private List<String> getFieldsFromDocuments(List<ODocument> documents) {
+    Set<String> fields = new HashSet<String>();
+    for (ODocument document : documents) {
+      fields.addAll(Arrays.asList(document.fieldNames()));
+    }
+    return new ArrayList<String>(fields);
+  }
+
+  private boolean hasDefinedProjections(Map<String, Object> projections) {
+    return projections != null && !projections.isEmpty();
+  }
+
+  private boolean handleUpdateQueryResult(Object rawResult) {
+    Integer updateCount = (rawResult instanceof Integer) ? (Integer) rawResult : 1;
+    setResult(updateCount);
+    return false;
   }
 
   public ResultSet executeQuery(final String sql) throws SQLException {
     if (execute(sql))
-      return resultSet;
+      return getResultSet();
     else
       return null;
   }
 
-  /*
-   * private OrientJdbcResultSet executeCommand() throws SQLException { try {
-   * 
-   * // documents = query.setDatabase(database).execute(); rawResult = database.command(query).execute(); if (rawResult instanceof
-   * List<?>) documents = (List<ODocument>) rawResult;
-   * 
-   * resultSet = new OrientJdbcResultSet(this, documents, resultSetType, resultSetConcurrency, resultSetHoldability); return
-   * resultSet;
-   * 
-   * } catch (OQueryParsingException e) { throw new SQLSyntaxErrorException("Error on parsing the query", e); }
-   * 
-   * }
-   */
-
   public int executeUpdate(final String sql) throws SQLException {
     query = new OCommandSQL(sql);
-    rawResult = database.command(query).execute();
+    Object rawResult = database.command(query).execute();
 
     if (rawResult instanceof ODocument)
       return 1;
@@ -245,31 +266,37 @@ public class OrientJdbcStatement implements Statement {
   }
 
   public ResultSet getResultSet() throws SQLException {
-
-    return resultSet;
+    try {
+      return this.resultSet;
+    } finally {
+      setResult();
+    }
   }
 
   public int getResultSetConcurrency() throws SQLException {
 
-    return resultSet.getConcurrency();
+    return getResultSet().getConcurrency();
   }
 
   public int getResultSetHoldability() throws SQLException {
 
-    return resultSet.getHoldability();
+    return getResultSet().getHoldability();
   }
 
   public int getResultSetType() throws SQLException {
 
-    return resultSet.getType();
+    return getResultSet().getType();
   }
 
   public int getUpdateCount() throws SQLException {
     if (isClosed())
       throw new SQLException("Statement already closed");
 
-    return -1;
-
+    try {
+      return this.updateCount;
+    } finally {
+      setResult();
+    }
   }
 
   public SQLWarning getWarnings() throws SQLException {
@@ -355,4 +382,18 @@ public class OrientJdbcStatement implements Statement {
     return false;
   }
 
+  public void setResult(ResultSet resultSet) {
+    this.resultSet = resultSet;
+    this.updateCount = -1;
+  }
+
+  public void setResult(int updateCount) {
+    this.updateCount = updateCount;
+    this.resultSet = null;
+  }
+
+  public void setResult() {
+    this.resultSet = null;
+    this.updateCount = -1;
+  }
 }

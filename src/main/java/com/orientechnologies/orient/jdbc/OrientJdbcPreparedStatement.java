@@ -59,6 +59,13 @@ public class OrientJdbcPreparedStatement extends OrientJdbcStatement implements 
   private final String               sql;
   private final Map<Integer, Object> params;
 
+
+
+  @Override
+  public boolean execute(String sql) throws SQLException {
+    return super.execute(sql);
+  }
+
   public OrientJdbcPreparedStatement(OrientJdbcConnection iConnection, String sql) {
     super(iConnection);
     this.sql = sql;
@@ -67,30 +74,13 @@ public class OrientJdbcPreparedStatement extends OrientJdbcStatement implements 
 
   @SuppressWarnings("unchecked")
   public ResultSet executeQuery() throws SQLException {
-    if (sql.equalsIgnoreCase("select 1")) {
-      documents = new ArrayList<ODocument>();
-      documents.add(new ODocument().field("1", 1));
-    } else {
-      try {
-        query = new OSQLSynchQuery<ODocument>(sql);
-        documents = database.query((OQuery<? extends Object>) query, params.values().toArray());
-      } catch (OQueryParsingException e) {
-        throw new SQLSyntaxErrorException("Error on parsing the query", e);
-      }
-    }
-
-    // return super.executeQuery(sql);
-    resultSet = new OrientJdbcResultSet(this, documents, resultSetType, resultSetConcurrency, resultSetHoldability);
-    return resultSet;
+    this.execute();
+    return getResultSet();
   }
 
   public int executeUpdate() throws SQLException {
-    try {
-      query = new OCommandSQL(sql);
-      return database.command(query).execute(params.values().toArray());
-    } catch (OQueryParsingException e) {
-      throw new SQLSyntaxErrorException("Error on parsing the command", e);
-    }
+    this.execute();
+    return getUpdateCount();
   }
 
   public void setNull(int parameterIndex, int sqlType) throws SQLException {
@@ -175,7 +165,7 @@ public class OrientJdbcPreparedStatement extends OrientJdbcStatement implements 
   }
 
   public boolean execute() throws SQLException {
-    return this.execute(sql);
+    return super.execute(sql, this.params.values().toArray());
   }
 
   public void addBatch() throws SQLException {
@@ -317,4 +307,6 @@ public class OrientJdbcPreparedStatement extends OrientJdbcStatement implements 
   public void setNClob(int parameterIndex, Reader reader) throws SQLException {
     throw new UnsupportedOperationException();
   }
+
+
 }
