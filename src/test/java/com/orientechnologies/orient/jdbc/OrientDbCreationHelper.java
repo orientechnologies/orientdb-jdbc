@@ -1,7 +1,6 @@
 package com.orientechnologies.orient.jdbc;
 
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
-import com.orientechnologies.orient.core.db.record.ODatabaseRecordInternal;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.intent.OIntentMassiveInsert;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
@@ -150,14 +149,14 @@ public class OrientDbCreationHelper {
 		return article;
 	}
 
-	private static ORecordBytes loadFile(ODatabaseRecordInternal database, String filePath) throws IOException {
+	private static ORecordBytes loadFile(ODatabaseDocumentTx database, String filePath) throws IOException {
 		BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(new File(filePath)));
 		ORecordBytes record = new ORecordBytes(database);
 		record.fromInputStream(inputStream);
 		return record;
 	}
 
-	private static List<ORID> loadFile(ODatabaseRecordInternal database, String filePath, int bufferSize) throws IOException {
+	private static List<ORID> loadFile(ODatabaseDocumentTx database, String filePath, int bufferSize) throws IOException {
 		File binaryFile = new File(filePath);
 		long binaryFileLength = binaryFile.length();
 		int numberOfRecords = (int) (binaryFileLength / bufferSize);
