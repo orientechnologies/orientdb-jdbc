@@ -54,6 +54,12 @@
             <timezone>+1</timezone>
         </developer>
     </developers>
+    <contributors>
+        <contributor>
+            <name>Marvin Froeder</name>
+            <email>velo dot br at gmail dot com</email>
+        </contributor>
+    </contributors>
 
     <scm>
         <connection>scm:git:git@github.com:orientechnologies/orientdb-jdbc.git</connection>
