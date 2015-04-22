@@ -1,6 +1,7 @@
 package com.orientechnologies.orient.jdbc;
 
 import com.orientechnologies.orient.core.OConstants;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -15,6 +16,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -108,6 +112,17 @@ public class OrientJdbcDatabaseMetaDataTest extends OrientJdbcBaseTest {
         System.out.println(c);
       }
     }
+  }
+
+  @Test
+  public void getAllFields() throws SQLException {
+    ResultSet rsmc = conn.getMetaData().getColumns(null, null, "OUser", null);
+    List<String> fieldNames = new ArrayList<String>();
+    while (rsmc.next()) {
+      fieldNames.add(rsmc.getString("COLUMN_NAME"));
+    }
+
+    assertThat(fieldNames, containsInAnyOrder("name", "password", "roles", "status"));
   }
 
   @Test
