@@ -1,3 +1,8 @@
+*Project MOVED*
+
+OrientDB JDBC driver has been moved to OrientDB core modules: https://github.com/orientechnologies/orientdb/tree/develop/jdbc
+
+
 *OrientDB  JDBC Driver*
 
 OrientDB (http://code.google.com/p/orient/) is a NoSql DBMS that support a subset of SQL ad query languge.
