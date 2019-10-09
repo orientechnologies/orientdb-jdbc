@@ -3,5 +3,5 @@ language: java
 branches:
   only:
   - develop
-jdk:
-- oraclejdk8
+#jdk:
+#- oraclejdk8
